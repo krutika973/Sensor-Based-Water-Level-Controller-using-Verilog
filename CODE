@@ -1,0 +1,161 @@
+//Code Part
+module WaterLevelController (
+    input wire clk,       // Clock input
+    input wire reset,     // Reset input
+    input wire water_sensor_low,   // Low water level sensor input
+    input wire water_sensor_mid,   // Mid water level sensor input
+    input wire water_sensor_high,  // High water level sensor input
+    output reg pump_on       // Output to control pump (assuming active-high)
+);
+
+// State definitions
+parameter [1:0] IDLE = 2'b00;    // Idle state
+parameter [1:0] LOW_LEVEL = 2'b01;   // Low water level detected
+parameter [1:0] MID_LEVEL = 2'b10;   // Mid water level detected
+parameter [1:0] HIGH_LEVEL = 2'b11;  // High water level detected
+
+// Internal state register
+reg [1:0] state, next_state;
+
+// Sequential logic
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        state <= IDLE;
+    end else begin
+        state <= next_state;
+    end
+end
+
+// Combinational logic
+always @* begin
+    case (state)
+        IDLE: begin
+            if (water_sensor_low) begin
+                next_state = LOW_LEVEL;
+            end else if (water_sensor_mid) begin
+                next_state = MID_LEVEL;
+            end else if (water_sensor_high) begin
+                next_state = HIGH_LEVEL;
+            end else begin
+                next_state = IDLE;
+            end
+        end
+        LOW_LEVEL: begin
+            if (water_sensor_mid) begin
+                next_state = MID_LEVEL;
+            end else if (water_sensor_high) begin
+                next_state = HIGH_LEVEL;
+            end else begin
+                next_state = LOW_LEVEL;
+            end
+        end
+        MID_LEVEL: begin
+            if (water_sensor_high) begin
+                next_state = HIGH_LEVEL;
+            end else if (!water_sensor_low && !water_sensor_mid) begin
+                next_state = IDLE;
+            end else begin
+                next_state = MID_LEVEL;
+            end
+        end
+        HIGH_LEVEL: begin
+            if (!water_sensor_high) begin
+                next_state = MID_LEVEL;
+            end else begin
+                next_state = HIGH_LEVEL;
+            end
+        end
+        default: next_state = IDLE;
+    endcase
+end
+
+// Output control
+always @* begin
+    case (state)
+        IDLE: begin
+            pump_on = 1'b0;   // Pump off
+        end
+        LOW_LEVEL: begin
+            pump_on = 1'b1;   // Pump on
+        end
+        MID_LEVEL: begin
+            pump_on = 1'b1;   // Pump on
+        end
+        HIGH_LEVEL: begin
+            pump_on = 1'b0;   // Pump off
+        end
+        default: pump_on = 1'b0;
+    endcase
+end
+
+endmodule
+//Test Bench
+module WaterLevelController_tb();
+
+    
+    parameter CLK_PERIOD = 10;   // Clock period in ns
+
+    // Signals
+    reg clk;                      // Clock signal
+    reg reset;                    // Reset signal
+    reg water_sensor_low;         // Low water level sensor input
+    reg water_sensor_mid;         // Mid water level sensor input
+    reg water_sensor_high;        // High water level sensor input
+    wire pump_on;                 // Output pump control signal
+
+    // Instantiate the module under test
+    WaterLevelController DUT (
+        .clk(clk),
+        .reset(reset),
+        .water_sensor_low(water_sensor_low),
+        .water_sensor_mid(water_sensor_mid),
+        .water_sensor_high(water_sensor_high),
+        .pump_on(pump_on)
+    );
+
+    // Clock generation
+    always #((CLK_PERIOD/2)) clk = ~clk;
+
+    // Initial reset and sensor values
+    initial begin
+        clk = 0;
+        reset = 1;
+        water_sensor_low = 0;
+        water_sensor_mid = 0;
+        water_sensor_high = 0;
+
+        // Apply reset
+        #50 reset = 0;
+
+        // Test scenario 1: Low water level
+        #100 water_sensor_low = 1;
+        #100 water_sensor_low = 0;
+
+        // Test scenario 2: Mid water level
+        #100 water_sensor_mid = 1;
+        #100 water_sensor_mid = 0;
+
+        // Test scenario 3: High water level
+        #100 water_sensor_high = 1;
+        #100 water_sensor_high = 0;
+
+        // Test scenario 4: Transition between levels
+        #100 water_sensor_low = 1;
+        #100 water_sensor_low = 0;
+        #100 water_sensor_mid = 1;
+        #100 water_sensor_mid = 0;
+        #100 water_sensor_high = 1;
+        #100 water_sensor_high = 0;
+
+        // End simulation
+        #500; 
+      $finish;
+      end
+  
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars();
+  end
+endmodule
+
+
