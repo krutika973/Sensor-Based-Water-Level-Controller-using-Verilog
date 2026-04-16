@@ -1,0 +1,25 @@
+Initial Condition
+reset = 1 → System in IDLE
+Pump = OFF
+
+Low Level (water_sensor_low = 1)
+State → LOW_LEVEL
+Pump → ON ✅
+
+Mid Level (water_sensor_mid = 1)
+State → MID_LEVEL
+Pump → ON ✅
+
+High Level (water_sensor_high = 1)
+State → HIGH_LEVEL
+Pump → OFF ❌
+
+State Transition Flow
+IDLE → LOW → MID → HIGH
+HIGH → MID → LOW → IDLE
+
+| Water Level | State      | Pump |
+| ----------- | ---------- | ---- |
+| Low         | LOW_LEVEL  | ON   |
+| Mid         | MID_LEVEL  | ON   |
+| High        | HIGH_LEVEL | OFF  |
